@@ -4,7 +4,10 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
+<<<<<<< HEAD
   
+=======
+>>>>>>> 406a88a14917c4843ffa5a8b2b25608acbf01754
 });
 
 // Patient endpoints
