@@ -3,7 +3,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  baseURL: process.env.REACT_APP_API_URL,
+  
 });
 
 // Patient endpoints
@@ -21,6 +22,7 @@ export const getCaregiversByEmails = (emails) =>
   API.post('/api/caretakers/by-emails', { emails });
 
 export const loginUser = (formData) =>
+  // console.log(process.env.REACT_APP_API_URL);
   API.post('/api/auth/login', {formData});
 
 
