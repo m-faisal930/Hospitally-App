@@ -1,42 +1,35 @@
-name: Deploy Backend to Azure VM
+name: Auto Deploy Backend
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'backend/**'  # Only trigger when backend files change
+    branches: [main]
+    paths: 
+      - 'backend/**'  # Only deploy if backend files change
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    
-    - name: Build Docker image
-      working-directory: ./backend  # Important: work in backend directory
-      run: docker build . --file Dockerfile --tag mern-backend
-    
-    - name: Save Docker image
-      run: docker save mern-backend -o mern-backend.tar
-    
-    - name: Copy files to Azure VM
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.AZURE_VM_IP }}
-        username: ${{ secrets.AZURE_VM_USERNAME }}
-        password: ${{ secrets.AZURE_VM_PASSWORD }}
-        port: 22
-        source: "mern-backend.tar,backend/docker-compose.yml"  # Note path to compose file
-        target: "/home/azureuser/"
-    
-    - name: SSH and deploy on Azure VM
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.AZURE_VM_IP }}
-        username: ${{ secrets.AZURE_VM_USERNAME }}
-        password: ${{ secrets.AZURE_VM_PASSWORD }}
-        port: 22
-        script: |
-          docker load -i /home/azureuser/mern-backend.tar
-          docker-compose -f /home/azureuser/docker-compose.yml down
-          docker-compose -f /home/azureuser/docker-compose.yml up -d
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install SSH Key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Build & Push Docker Image
+        run: |
+          cd backend
+          docker build -t mern-backend .
+          docker save mern-backend > mern-backend.tar
+          scp -o StrictHostKeyChecking=no mern-backend.tar docker-compose.yml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/mern-backend/Hospitally-App/backend/
+
+      - name: Run on VM
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} <<EOF
+            cd ~/mern-backend/Hospitally-App/backend
+            docker load -i mern-backend.tar
+            docker compose down
+            docker compose up -d
+          EOF
