@@ -32,7 +32,11 @@ jobs:
       - name: Prepare Deployment Folder
         run: |
           mkdir deploy
-          cp -r frontend/build/* deploy/
+          cp -r frontend/build deploy/
+          cp frontend/server.js deploy/
+          cp frontend/package.json deploy/
+          cp frontend/package-lock.json deploy/
+
 
       - name: Zip for Azure
         run: |
