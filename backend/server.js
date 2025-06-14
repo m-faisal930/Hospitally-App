@@ -14,6 +14,7 @@ const app = express();
 // Connect Database
 connectDB();
 
+
 // Middleware
 app.use(cors());
 // app.use(express.json());
@@ -36,7 +37,7 @@ app.use('/api/messages', messageRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.send('Hospital App API Running');
+  res.send('Hospital App API Running Successfully');
 });
 
 const PORT = process.env.PORT || 5000;
