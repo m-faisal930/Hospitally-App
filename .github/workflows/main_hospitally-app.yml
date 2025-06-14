@@ -28,6 +28,12 @@ jobs:
           cd frontend
           CI=false npm run build
 
+
+      - name: Prepare Deployment Folder
+        run: |
+          mkdir deploy
+          cp -r frontend/build/* deploy/
+
       - name: Zip for Azure
         run: |
           cd deploy
@@ -36,7 +42,7 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: <YOUR_AZURE_APP_NAME>
+          app-name: hospitally-app
           slot-name: production
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: app.zip
