@@ -28,14 +28,6 @@ jobs:
           cd frontend
           CI=false npm run build
 
-      - name: Prepare Deployment Artifacts
-        run: |
-          mkdir deploy
-          cp -r frontend/build/* deploy/
-          cp server.js deploy/
-          cp package.json deploy/  # If your server has its own dependencies
-          cp -r node_modules deploy/ || echo "No node_modules to copy"
-
       - name: Zip for Azure
         run: |
           cd deploy
