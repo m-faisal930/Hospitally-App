@@ -37,7 +37,7 @@ app.use('/api/messages', messageRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.send('Hospital App API Running jhfjshfh');
+  res.send('Hospital App API Running kiojiij');
 });
 
 const PORT = process.env.PORT || 5000;
