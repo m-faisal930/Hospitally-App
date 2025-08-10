@@ -71,6 +71,40 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
+/* ========== VALIDATION STYLES ========== */
+input.error, select.error, textarea.error {
+    border-color: #e74c3c;
+    background-color: #fdf2f2;
+}
+
+input.error:focus, select.error:focus, textarea.error:focus {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.field-error {
+    color: #e74c3c;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.field-error::before {
+    content: "⚠";
+    font-size: 1rem;
+}
+
+.char-count {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
 /* ========== LAYOUT COMPONENTS ========== */
 .name-container, .address-group {
     display: flex;

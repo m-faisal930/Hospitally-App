@@ -22,9 +22,128 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
     additionalNotes: '',
   });
 
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  // Validation functions
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'firstName':
+        if (!value.trim()) return 'First name is required';
+        if (value.trim().length < 2) return 'First name must be at least 2 characters';
+        if (!/^[a-zA-Z\s]+$/.test(value.trim())) return 'First name can only contain letters and spaces';
+        return '';
+      
+      case 'lastName':
+        if (!value.trim()) return 'Last name is required';
+        if (value.trim().length < 2) return 'Last name must be at least 2 characters';
+        if (!/^[a-zA-Z\s]+$/.test(value.trim())) return 'Last name can only contain letters and spaces';
+        return '';
+      
+      case 'dob':
+        if (!value) return 'Date of birth is required';
+        const dob = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - dob.getFullYear();
+        if (age < 55) return 'You must be at least 55 years old to use this service';
+        if (age > 120) return 'Please enter a valid date of birth';
+        return '';
+      
+      case 'gender':
+        if (!value) return 'Please select a gender';
+        return '';
+      
+      case 'phoneNumber':
+        if (!value) return 'Phone number is required';
+        if (!/^\d{10}$/.test(value.replace(/\D/g, ''))) return 'Phone number must be 10 digits';
+        return '';
+      
+      case 'email':
+        if (!value) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+        return '';
+      
+      case 'address':
+        if (!value.trim()) return 'Street address is required';
+        if (value.trim().length < 5) return 'Address must be at least 5 characters';
+        return '';
+      
+      case 'city':
+        if (!value.trim()) return 'City is required';
+        if (value.trim().length < 2) return 'City must be at least 2 characters';
+        if (!/^[a-zA-Z\s]+$/.test(value.trim())) return 'City can only contain letters and spaces';
+        return '';
+      
+      case 'postalCode':
+        if (!value) return 'Postal code is required';
+        if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(value)) return 'Please enter a valid Canadian postal code (e.g., A1A 1A1)';
+        return '';
+      
+      case 'assistanceType':
+        if (patientData.assistanceType.length === 0) return 'Please select at least one type of assistance';
+        return '';
+      
+      case 'availabilityStartDate':
+        if (!value) return 'Start date is required';
+        const startDate = new Date(value);
+        if (startDate < new Date()) return 'Start date cannot be in the past';
+        return '';
+      
+      case 'availabilityEndDate':
+        if (!value) return 'End date is required';
+        if (patientData.availabilityStartDate && value <= patientData.availabilityStartDate) {
+          return 'End date must be after start date';
+        }
+        return '';
+      
+      case 'startTime':
+        if (!value) return 'Start time is required';
+        return '';
+      
+      case 'endTime':
+        if (!value) return 'End time is required';
+        if (patientData.startTime && value <= patientData.startTime) {
+          return 'End time must be after start time';
+        }
+        return '';
+      
+      default:
+        return '';
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    Object.keys(patientData).forEach(key => {
+      if (key === 'assistanceType') {
+        const error = validateField(key, patientData[key]);
+        if (error) newErrors[key] = error;
+      } else if (key !== 'totalHours' && key !== 'additionalNotes') {
+        const error = validateField(key, patientData[key]);
+        if (error) newErrors[key] = error;
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPatientData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    // Validate field on blur
+    const error = validateField(name, value);
+    setErrors(prev => ({ ...prev, [name]: error }));
   };
 
   const handleCheckboxChange = (e) => {
@@ -35,6 +154,11 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
         : prev.assistanceType.filter((item) => item !== name);
       return { ...prev, assistanceType: updated };
     });
+    
+    // Clear assistance type error when user makes selection
+    if (errors.assistanceType) {
+      setErrors(prev => ({ ...prev, assistanceType: '' }));
+    }
   };
 
   const calculateTotalHours = () => {
@@ -46,56 +170,43 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
     }
   };
 
-  // In your parent component
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      // Mark all fields as touched to show errors
+      const allTouched = {};
+      Object.keys(patientData).forEach(key => {
+        allTouched[key] = true;
+      });
+      setTouched(allTouched);
+      return;
+    }
+
     try {
-      // Validate required fields
-      if (
-        !patientData.availabilityStartDate ||
-        !patientData.availabilityEndDate
-      ) {
-        alert('Please select your availability dates');
-        return;
-      }
-
-      e.preventDefault();
-
       // Extract last 4 digits of phone
       const authDigits = patientData.phoneNumber.slice(-4);
       const patientData1 = { ...patientData, authDigits };
-
-      // await createPatient(patientData);
 
       const response = await createPatient(patientData1);
 
       // Store email for future reference
       localStorage.setItem('patientEmail', patientData1.email);
       localStorage.setItem('userRole', 'patient');
-      // console.log('Patient created:', response.data);
 
       onSubmit(patientData, '/patient-dashboard');
 
-      // Redirect or show success message
     } catch (error) {
       console.error('Error creating patient:', error);
-      // Show error message to user
     }
   };
 
-  // const handleSubmit = (e) => {
-  //   e.preventDefault();
-
-  //   // Validate required fields
-  //   if (
-  //     !patientData.availabilityStartDate ||
-  //     !patientData.availabilityEndDate
-  //   ) {
-  //     alert('Please select your availability dates');
-  //     return;
-  //   }
-  //   console.log('Submitting patient data:', patientData);
-  //   onSubmit(patientData);
-  // };
+  const renderFieldError = (fieldName) => {
+    if (errors[fieldName] && touched[fieldName]) {
+      return <div className="field-error">{errors[fieldName]}</div>;
+    }
+    return null;
+  };
 
   return (
     <form onSubmit={handleSubmit} className="form-container">
@@ -119,9 +230,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="firstName"
                   value={patientData.firstName}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.firstName && touched.firstName ? 'error' : ''}
+                  placeholder="Enter your first name"
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('firstName')}
               </div>
               <div className="input-field">
                 <label htmlFor="lastName">
@@ -133,9 +248,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="lastName"
                   value={patientData.lastName}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.lastName && touched.lastName ? 'error' : ''}
+                  placeholder="Enter your last name"
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('lastName')}
               </div>
             </div>
 
@@ -144,15 +263,18 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 Date of Birth <span className="required">*</span>
               </label>
               <input
-                type="text"
+                type="date"
                 id="dob"
                 name="dob"
                 value={patientData.dob}
                 onChange={handleChange}
-                placeholder="MM/DD/YYYY"
+                onBlur={handleBlur}
+                className={errors.dob && touched.dob ? 'error' : ''}
+                max={new Date().toISOString().split('T')[0]}
                 required
                 disabled={isSubmitting}
               />
+              {renderFieldError('dob')}
             </div>
 
             <div className="input-field">
@@ -164,6 +286,8 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 name="gender"
                 value={patientData.gender}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={errors.gender && touched.gender ? 'error' : ''}
                 required
                 disabled={isSubmitting}
               >
@@ -173,6 +297,7 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 <option value="other">Other</option>
                 <option value="prefer-not-to-say">Prefer not to say</option>
               </select>
+              {renderFieldError('gender')}
             </div>
 
             <div className="input-field">
@@ -185,9 +310,14 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 name="phoneNumber"
                 value={patientData.phoneNumber}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={errors.phoneNumber && touched.phoneNumber ? 'error' : ''}
+                placeholder="1234567890"
+                pattern="[0-9]{10}"
                 required
                 disabled={isSubmitting}
               />
+              {renderFieldError('phoneNumber')}
             </div>
 
             <div className="input-field">
@@ -200,9 +330,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 name="email"
                 value={patientData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={errors.email && touched.email ? 'error' : ''}
+                placeholder="your.email@example.com"
                 required
                 disabled={isSubmitting}
               />
+              {renderFieldError('email')}
             </div>
 
             <div className="input-field">
@@ -215,9 +349,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 name="address"
                 value={patientData.address}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={errors.address && touched.address ? 'error' : ''}
+                placeholder="123 Main Street"
                 required
                 disabled={isSubmitting}
               />
+              {renderFieldError('address')}
             </div>
 
             <div className="address-group">
@@ -231,9 +369,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="city"
                   value={patientData.city}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.city && touched.city ? 'error' : ''}
+                  placeholder="Enter your city"
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('city')}
               </div>
               <div className="input-field">
                 <label htmlFor="postalCode">
@@ -245,9 +387,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="postalCode"
                   value={patientData.postalCode}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.postalCode && touched.postalCode ? 'error' : ''}
+                  placeholder="A1A 1A1"
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('postalCode')}
               </div>
             </div>
           </div>
@@ -298,6 +444,7 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 </label>
               ))}
             </div>
+            {renderFieldError('assistanceType')}
 
             <h3 className="section-title">When are you available for care?</h3>
             <div className="date-range-container">
@@ -311,9 +458,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="availabilityStartDate"
                   value={patientData.availabilityStartDate}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.availabilityStartDate && touched.availabilityStartDate ? 'error' : ''}
+                  min={new Date().toISOString().split('T')[0]}
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('availabilityStartDate')}
               </div>
               <div className="input-field">
                 <label htmlFor="availabilityEndDate">
@@ -325,10 +476,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="availabilityEndDate"
                   value={patientData.availabilityEndDate}
                   onChange={handleChange}
-                  min={patientData.availabilityStartDate}
+                  onBlur={handleBlur}
+                  className={errors.availabilityEndDate && touched.availabilityEndDate ? 'error' : ''}
+                  min={patientData.availabilityStartDate || new Date().toISOString().split('T')[0]}
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('availabilityEndDate')}
               </div>
             </div>
 
@@ -343,9 +497,12 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="startTime"
                   value={patientData.startTime}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.startTime && touched.startTime ? 'error' : ''}
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('startTime')}
               </div>
               <div className="input-field">
                 <label htmlFor="endTime">
@@ -357,9 +514,12 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                   name="endTime"
                   value={patientData.endTime}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={errors.endTime && touched.endTime ? 'error' : ''}
                   required
                   disabled={isSubmitting}
                 />
+                {renderFieldError('endTime')}
               </div>
             </div>
 
@@ -368,7 +528,7 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 type="button"
                 className="btn btn-calculate"
                 onClick={calculateTotalHours}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !patientData.startTime || !patientData.endTime}
               >
                 Calculate Total Hours
               </button>
@@ -386,8 +546,13 @@ const PatientForm = ({ onSubmit, isSubmitting }) => {
                 value={patientData.additionalNotes}
                 onChange={handleChange}
                 rows="4"
+                placeholder="Any additional information about your care needs..."
+                maxLength="1000"
                 disabled={isSubmitting}
               />
+              <div className="char-count">
+                {patientData.additionalNotes.length}/1000 characters
+              </div>
             </div>
           </div>
         </div>

@@ -69,14 +69,22 @@ exports.login = async (req, res) => {
   console.log('Login request body:', req.body); // Log the request body for debugging
   
   try {
-    const { email, lastDigits, role } = req.body.formData;
-    console.log('Login attempt for:', req.body.formData.email, 'Role:', role);
+    // Handle both frontend and Postman request formats
+    let { email, lastDigits, role } = req.body;
+    
+    // If data is nested in formData (frontend request)
+    if (req.body.formData && req.body.formData.formData) {
+      ({ email, lastDigits, role } = req.body.formData.formData);
+    }
+    
+    console.log('Login attempt for:', email, 'Role:', role);
     
     // Find user based on email and role
     const user = await (role === 'patient' ? Patient : Caretaker).findOne(
-      email);
-      console.log(user)
+      { email }
+    ).select('+authDigits');
 
+    console.log('User found:', user);
 
     if (!user) {
       return res.status(401).json({
@@ -85,13 +93,27 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Validate the lastDigits against user's authDigits
+    if (user.authDigits !== lastDigits) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Remove sensitive data before sending response
+    const userResponse = user.toObject();
+    delete userResponse.authDigits;
+
     res.json({
       success: true,
       role,
-      name: user.firstName // Optional: return user's name
+      name: user.firstName,
+      user: userResponse
     });
 
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Login failed'
