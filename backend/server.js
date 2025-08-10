@@ -23,12 +23,7 @@ connectDB();
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing form data
 
-// app.use(cors());
-
-app.use(cors({
-  origin: "https://hospitally-app.vercel.app" || "http://localhost:3000",
-  credentials: true // if you're using cookies or auth headers
-}));
+app.use(cors());
 
 
 
